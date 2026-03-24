@@ -13,7 +13,11 @@ class Tracker:
         w = x2 - x1
         h = y2 - y1
 
-        self.tracker = cv2.TrackerCSRT_create()
+        try:
+            self.tracker = cv2.legacy.TrackerKCF_create()
+        except:
+            self.tracker = cv2.TrackerKCF_create()
+
         self.tracker.init(frame, (x1, y1, w, h))
         self.active = True
 
