@@ -1,6 +1,7 @@
 from ultralytics import YOLO
 from messages.detection import Detection
 from utils.time_utils import now
+import threading
 
 
 class Detector:
@@ -9,44 +10,56 @@ class Detector:
         self.conf_threshold = conf_threshold
         self.imgsz = imgsz
 
-        # Run YOLO less frequently (VERY IMPORTANT)
-        self.frame_count = 0
-        self.detect_every = 3  # run detection every N frames
+        self.latest_frame = None
+        self.latest_detections = []
+
+        self.lock = threading.Lock()
+
+        # Start background thread
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+
+    def _run(self):
+        while True:
+            if self.latest_frame is None:
+                continue
+
+            frame = self.latest_frame.copy()
+
+            results = self.model.predict(
+                frame,
+                device="cuda",
+                imgsz=self.imgsz,
+                conf=self.conf_threshold,
+                verbose=False
+            )
+
+            detections = []
+
+            for r in results:
+                if r.boxes is None:
+                    continue
+
+                for box in r.boxes:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    conf = float(box.conf[0])
+                    class_id = int(box.cls[0])
+
+                    detections.append(
+                        Detection(x1, y1, x2, y2, conf, class_id, now())
+                    )
+
+            with self.lock:
+                self.latest_detections = detections
 
     def detect(self, frame):
         """
-        Returns list of Detection objects
+        Non-blocking detection
         """
 
-        self.frame_count += 1
+        # Update frame for background thread
+        self.latest_frame = frame
 
-        # --- Throttle detection ---
-        if self.frame_count % self.detect_every != 0:
-            return []
-
-        # --- Run YOLO ---
-        results = self.model.predict(
-            frame,
-            device="cuda",
-            imgsz=self.imgsz,
-            conf=self.conf_threshold,
-            verbose=False
-        )
-
-        detections = []
-
-        for r in results:
-            if r.boxes is None:
-                continue
-
-            for box in r.boxes:
-                conf = float(box.conf[0])
-
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                class_id = int(box.cls[0])
-
-                detections.append(
-                    Detection(x1, y1, x2, y2, conf, class_id, now())
-                )
-
-        return detections
+        # Return latest detections (instant)
+        with self.lock:
+            return self.latest_detections.copy()
