@@ -1,3 +1,4 @@
+import time
 import yaml
 import cv2
 
@@ -64,22 +65,28 @@ def main():
 
             dt = timer.dt()
 
-            # --- Vision ---
-            target, detection = vision.process(frame)
 
-            command = None  # Always define
+            # --- Vision ---
+           # --- KEEP UI ALIVE FIRST ---
+            cv2.imshow("UGV Turret System", frame)
+            if cv2.waitKey(1) & 0xFF == 27:
+                break
+
+            # --- Vision ---
+            target, detection = vision.process(frame.copy())
+
+            command = None
 
             # --- Control ---
             if target is not None:
                 command = controller.update(target, dt)
-
-                # --- Communication ---
                 comm.send_command(command)
 
-            # --- Visualization ---
+            # --- Draw AFTER processing ---
             frame = visualizer.draw(frame, detection, target, command)
 
-            cv2.imshow("UGV Turret System", frame)
+            # --- Yield to OS ---
+            time.sleep(0.001)
 
             # --- Exit condition ---
             if cv2.waitKey(1) & 0xFF == 27:  # ESC key
