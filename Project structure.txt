@@ -1,0 +1,41 @@
+ugv_turret_system/
+│
+├── main.py                     # Entry point (temporary orchestrator)
+├── config/
+│   └── config.yaml            # All tunable parameters
+│
+├── vision/
+│   ├── detector.py            # YOLO wrapper
+│   ├── tracker.py             # OpenCV tracker
+│   └── vision_node.py         # Combines detector + tracker (ROS-ready)
+│
+├── control/
+│   ├── pid.py                 # PID controller (pure logic)
+│   ├── controller.py          # Converts target → command
+│   └── control_node.py        # ROS-style control wrapper
+│
+├── comm/
+│   ├── serial_interface.py    # UART communication
+│   └── comm_node.py           # ROS-style comm wrapper
+│
+├── messages/
+│   ├── target.py              # Target data structure
+│   ├── command.py             # Motor command structure
+│   └── detection.py           # Raw detection output
+│
+├── utils/
+│   ├── time_utils.py          # Timestamps, dt calculation
+│   ├── filters.py             # Smoothing / prediction filters
+│   └── logger.py              # Logging system
+│
+├── hardware/
+│   ├── camera.py              # Camera abstraction
+│   └── arduino_protocol.md    # Serial protocol definition
+│
+├── tests/
+│   ├── test_pid.py
+│   ├── test_tracker.py
+│   └── test_serial.py
+│
+├── requirements.txt
+└── README.md
