@@ -1,11 +1,12 @@
 from ultralytics import YOLO
-from multiprocessing import Process, Queue
-
+from multiprocessing import Process, SimpleQueue
 
 class YOLOProcess:
     def __init__(self, model_path, conf=0.5, imgsz=320):
-        self.input_q = Queue(maxsize=1)
-        self.output_q = Queue(maxsize=1)
+
+
+        self.input_q = SimpleQueue()
+        self.output_q = SimpleQueue()   
 
         self.process = Process(
             target=self._run,
@@ -18,7 +19,20 @@ class YOLOProcess:
         model = YOLO(model_path)
 
         while True:
-            frame = self.input_q.get()
+            if self.input_q.empty():
+              continue
+
+            frame = None
+
+
+            while True:
+                try:
+                    frame = self.input_q.get_nowait()
+                except:
+                    break
+
+            if frame is None:
+                continue
 
             results = model.predict(
                 frame,
@@ -38,14 +52,34 @@ class YOLOProcess:
                     x1, y1, x2, y2 = map(int, b.xyxy[0])
                     boxes.append((x1, y1, x2, y2))
 
-            if not self.output_q.full():
-                self.output_q.put(boxes)
+
+            try:
+                while True:
+                    self.output_q.get_nowait()
+            except:
+                pass
+
+            self.output_q.put(boxes)
+
 
     def send(self, frame):
-        if not self.input_q.full():
-            self.input_q.put(frame)
+        try:
+            while True:
+                self.input_q.get_nowait()
+        except:
+            pass
+
+        self.input_q.put(frame)
 
     def get(self):
-        if not self.output_q.empty():
-            return self.output_q.get()
-        return []
+
+
+        boxes = None
+
+        while True:
+            try:
+                boxes = self.output_q.get_nowait()
+            except:
+                break
+
+        return boxes if boxes is not None else []

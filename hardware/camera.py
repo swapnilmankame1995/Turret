@@ -10,10 +10,15 @@ class Camera:
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
+
     def get_frame(self):
+        if not self.cap.isOpened():
+            return None
+
         ret, frame = self.cap.read()
         if not ret:
             return None
+
         return frame
 
     def release(self):
